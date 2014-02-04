@@ -1,1 +1,5 @@
+# Build
+dist
+
+# Acceptance Tests
 .shelly
