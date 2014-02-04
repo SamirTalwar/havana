@@ -23,21 +23,20 @@ acceptanceTestCases = do
         inputFiles <- ls dir
         return $ TestCase dir inputFiles
 
-main = do
-    shelly $ silently $ do
-        checkJavaVersion "1.8"
-        compileHavana
+main = shelly $ silently $ do
+    checkJavaVersion "1.8"
+    compileHavana
 
-        tests <- acceptanceTestCases
-        forM_ tests $ \testCase -> do
-            javacOutput <- compile testCase javac
-            havanaOutput <- compile testCase havana
-            diff javacOutput havanaOutput
+    tests <- acceptanceTestCases
+    forM_ tests $ \testCase -> do
+        javacOutput <- compile testCase javac
+        havanaOutput <- compile testCase havana
+        diff javacOutput havanaOutput
 
 checkJavaVersion version = do
     cmd "javac" "-version"
     javacVersion <- lastStderr
-    when (not $ ("javac " `T.append` version) `T.isPrefixOf` (T.strip javacVersion))
+    unless (("javac " `T.append` version) `T.isPrefixOf` T.strip javacVersion)
         (errorExit (T.concat ["Running the acceptance tests requires Java ", version, " or higher."]))
 
 compileHavana = fake ["cabal", "build"]
