@@ -7,6 +7,9 @@ import Control.Monad
 import qualified Data.List as L
 import qualified Data.Text as T
 import qualified System.Directory as Dir
+
+import qualified Havana
+
 default (T.Text)
 
 data TestCase = TestCase {
@@ -25,13 +28,11 @@ acceptanceTestCases = do
 
 main = shelly $ silently $ do
     checkJavaVersion "1.8"
-    compileHavana
 
     tests <- acceptanceTestCases
     forM_ tests $ \testCase -> do
-        javacOutput <- compile testCase javac
-        havanaOutput <- compile testCase havana
-        diff javacOutput havanaOutput
+        compile testCase (\t -> cmd "javac" (toTextIgnore t))
+        compile testCase (\t -> return $ Havana.compile (show t))
 
 checkJavaVersion version = do
     cmd "javac" "-version"
@@ -39,17 +40,6 @@ checkJavaVersion version = do
     unless (("javac " `T.append` version) `T.isPrefixOf` T.strip javacVersion)
         (errorExit (T.concat ["Running the acceptance tests requires Java ", version, " or higher."]))
 
-compileHavana = fake ["cabal", "build"]
-
 compile testCase compiler = do
     cd (directory testCase)
-    forM_ (inputFiles testCase) (\file -> fake [compiler, toTextIgnore file])
-
-diff a b = when (a /= b) (echo "Nope.")
-
-javac = "javac"
-havana = "./bin/havana"
-
-fake command = echo (T.append "$ " (T.intercalate " " command))
-
-pathFrom = fromText . T.pack
+    forM_ (inputFiles testCase) compiler
