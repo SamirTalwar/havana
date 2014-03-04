@@ -9,7 +9,7 @@ import qualified Data.Text as T
 import qualified System.Directory as Dir
 import qualified System.FilePath as Path
 
-import qualified Havana
+import qualified Havana.Compiler
 
 default (T.Text)
 
@@ -29,12 +29,14 @@ testFile inputFile = TestFile inputFile outputFile
 
 acceptanceTestDir = fromText "acceptance"
 tmpDir = fromText "tmp"
+havanacRelativePath = fromText "dist/build/havanac/havanac"
 
 acceptanceTestCases = do
     return [TestCase (acceptanceTestDir </> "001-empty-class") [testFile "Alpha.java"]]
 
 main = shelly $ silently $ do
     checkJavaVersion "1.8"
+    havanac <- absPath havanacRelativePath
     tmpPath <- absPath tmpDir
     mkdir_p tmpPath
 
@@ -43,7 +45,7 @@ main = shelly $ silently $ do
         cd (directory testCase)
         forM (files testCase) $ \file -> do
             javacOutputFile <- compile "javac" file tmpPath (cmd "javac")
-            havanaOutputFile <- compile "havana" file tmpPath (\t -> return $ Havana.compile (fromPath t))
+            havanaOutputFile <- compile "havana" file tmpPath (cmd havanac)
             cmd "diff" javacOutputFile havanaOutputFile
 
 checkJavaVersion version = do

@@ -1,3 +1,9 @@
-module Havana.Main where
+module Main where
 
-main = putStrLn "*** COMPILE COMPILE COMPILE ***"
+import qualified System.Environment
+
+import qualified Havana.Compiler
+
+main = do
+    args <- System.Environment.getArgs
+    Havana.Compiler.compile (args !! 0)
