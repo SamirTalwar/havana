@@ -25,28 +25,25 @@ data TestFile = TestFile {
 
 testFile inputFile = TestFile inputFile outputFile
     where
-    outputFile = S.fromString $ Path.replaceExtension (show inputFile) "class"
+    outputFile = S.fromString $ Path.replaceExtension (fromPath inputFile) "class"
 
 acceptanceTestDir = fromText "acceptance"
 tmpDir = fromText "tmp"
 
 acceptanceTestCases = do
-    testDirectories <- ls acceptanceTestDir
-    forM testDirectories $ \dir -> do
-        inputFiles <- findWhen (\f -> return $ Path.takeExtension (show f) == "java") dir
-        let testFiles = map testFile inputFiles
-        return $ TestCase dir testFiles
+    return [TestCase (acceptanceTestDir </> "001-empty-class") [testFile "Alpha.java"]]
 
 main = shelly $ silently $ do
     checkJavaVersion "1.8"
-    mkdir_p tmpDir
+    tmpPath <- absPath tmpDir
+    mkdir_p tmpPath
 
     tests <- acceptanceTestCases
     forM tests $ \testCase -> do
         cd (directory testCase)
         forM (files testCase) $ \file -> do
-            javacOutputFile <- compile "javac" file (cmd "javac")
-            havanaOutputFile <- compile "havana" file (\t -> return $ Havana.compile (show t))
+            javacOutputFile <- compile "javac" file tmpPath (cmd "javac")
+            havanaOutputFile <- compile "havana" file tmpPath (\t -> return $ Havana.compile (fromPath t))
             cmd "diff" javacOutputFile havanaOutputFile
 
 checkJavaVersion version = do
@@ -55,8 +52,11 @@ checkJavaVersion version = do
     unless (("javac " `T.append` version) `T.isPrefixOf` T.strip javacVersion)
         (errorExit (T.concat ["Running the acceptance tests requires Java ", version, " or higher."]))
 
-compile prefix file compiler = do
-    let destination = tmpDir </> (prefix ++ "-" ++ (show $ outputFile file))
+compile prefix file outputPath compiler = do
+    let destination = outputPath </> (prefix ++ "-" ++ (fromPath $ outputFile file))
     compiler (inputFile file)
     cp (outputFile file) destination
+    rm (outputFile file)
     return destination
+
+fromPath = T.unpack . toTextIgnore
