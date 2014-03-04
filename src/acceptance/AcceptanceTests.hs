@@ -46,7 +46,7 @@ main = shelly $ silently $ do
         forM (files testCase) $ \file -> do
             javacOutputFile <- compile "javac" file tmpPath (cmd "javac")
             havanaOutputFile <- compile "havana" file tmpPath (cmd havanac)
-            cmd "diff" javacOutputFile havanaOutputFile
+            highlightOutput $ cmd "cmp" javacOutputFile havanaOutputFile
 
 checkJavaVersion version = do
     cmd "javac" "-version"
@@ -62,3 +62,15 @@ compile prefix file outputPath compiler = do
     return destination
 
 fromPath = T.unpack . toTextIgnore
+
+highlightOutput command = do
+    output <- errExit False command
+    exitCode <- lastExitCode
+    if exitCode > 0 then red else green
+    echo_n output
+    reset
+    when (exitCode > 0) (exit exitCode)
+
+red = echo_n "\x1b[31m"
+green = echo_n "\x1b[31m"
+reset = echo_n "\x1b[0m"
