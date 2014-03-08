@@ -14,8 +14,13 @@ import qualified Havana.Compiler
 default (T.Text)
 
 data TestCase = TestCase {
+    testName :: T.Text,
     directory :: Shelly.FilePath,
     files :: [TestFile]
+}
+
+data DisabledTestCase = DisabledTestCase {
+    disabledTestName :: T.Text
 }
 
 data TestFile = TestFile {
@@ -23,36 +28,59 @@ data TestFile = TestFile {
     outputFile :: Shelly.FilePath
 }
 
+data TestContext = TestContext {
+    javac :: Shelly.FilePath,
+    havanac :: Shelly.FilePath,
+    tmpPath :: Shelly.FilePath
+}
+
+class Executable a where
+    execute :: a -> TestContext -> Sh ()
+
 testFile inputFile = TestFile inputFile outputFile
     where
     outputFile = S.fromString $ Path.replaceExtension (fromPath inputFile) "class"
+
+disabled (TestCase testName _ _) = DisabledTestCase testName
 
 acceptanceTestDir = fromText "acceptance"
 tmpDir = fromText "tmp"
 havanacRelativePath = fromText "dist/build/havanac/havanac"
 
 acceptanceTestCases = do
-    return [TestCase (acceptanceTestDir </> "001-empty-class") [testFile "Alpha.java"]]
+    return [disabled $ TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class") [testFile "Alpha.java"]]
 
-main = shelly $ silently $ do
+main = shelly $ do
     checkJavaVersion "1.8"
     havanac <- absPath havanacRelativePath
     tmpPath <- absPath tmpDir
     mkdir_p tmpPath
 
+    let context = TestContext { javac = fromText "javac", havanac = havanac, tmpPath = tmpPath }
     tests <- acceptanceTestCases
     forM tests $ \testCase -> do
-        cd (directory testCase)
-        forM (files testCase) $ \file -> do
-            javacOutputFile <- compile "javac" file tmpPath (cmd "javac")
-            havanaOutputFile <- compile "havana" file tmpPath (cmd havanac)
-            highlightOutput $ cmd "cmp" javacOutputFile havanaOutputFile
+        execute testCase context
 
 checkJavaVersion version = do
-    cmd "javac" "-version"
+    silently $ cmd "javac" "-version"
     javacVersion <- lastStderr
     unless (("javac " `T.append` version) `T.isPrefixOf` T.strip javacVersion)
         (errorExit (T.concat ["Running the acceptance tests requires Java ", version, " or higher."]))
+
+instance Executable TestCase where
+    execute testCase context = do
+        echo (testName testCase)
+        cd (directory testCase)
+        forM (files testCase) $ \file -> do
+            javacOutputFile <- compile "javac" file (tmpPath context) (cmd (javac context))
+            havanaOutputFile <- compile "havana" file (tmpPath context) (cmd (havanac context))
+            highlightOutput $ cmd "cmp" javacOutputFile havanaOutputFile
+        return ()
+
+instance Executable DisabledTestCase where
+    execute testCase context = coloredAs yellow $ do
+        echo_n "DISABLED: "
+        echo (disabledTestName testCase)
 
 compile prefix file outputPath compiler = do
     let destination = outputPath </> (prefix ++ "-" ++ (fromPath $ outputFile file))
@@ -66,11 +94,17 @@ fromPath = T.unpack . toTextIgnore
 highlightOutput command = do
     output <- errExit False command
     exitCode <- lastExitCode
-    if exitCode > 0 then red else green
-    echo_n output
-    reset
+    let color = if exitCode > 0 then red else green
+    coloredAs color $ echo_n output
     when (exitCode > 0) (exit exitCode)
 
-red = echo_n "\x1b[31m"
-green = echo_n "\x1b[31m"
-reset = echo_n "\x1b[0m"
+coloredAs color action = do
+    echo_n color
+    result <- action
+    echo_n reset
+    return result
+
+red = "\x1b[31m"
+green = "\x1b[32m"
+yellow = "\x1b[33m"
+reset = "\x1b[0m"
