@@ -18,15 +18,15 @@ cabal-version:       >=1.8
 library
   exposed-modules:     Havana, Havana.Compiler, Havana.Parser, Havana.Serializer
   hs-source-dirs:      src/core
-  build-depends:       base ==4.6.*, parsec, filepath
+  build-depends:       base ==4.7.*, parsec, filepath
 
 executable havanac
   main-is:             Main.hs
   hs-source-dirs:      src/executable
-  build-depends:       havana, base ==4.6.*
+  build-depends:       havana, base ==4.7.*
 
 Test-Suite acceptance-tests
   type:                exitcode-stdio-1.0
   main-is:             AcceptanceTests.hs
   hs-source-dirs:      src/acceptance
-  build-depends:       havana, base ==4.6.*, shelly ==1.4.4, directory, filepath, text
+  build-depends:       havana, base ==4.7.*, shelly, directory, filepath, text

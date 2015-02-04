@@ -1,4 +1,6 @@
 # Build
+.cabal-sandbox
+cabal.sandbox.config
 dist
 
 # Acceptance Tests
