@@ -12,5 +12,5 @@ compile inputPath = do
     let ast = either (error . Parser.parseErrors) id result
     Serializer.serializeToFile ast outputPath
     return ()
-    where
-    outputPath = Path.replaceExtension inputPath "class"
+        where
+        outputPath = Path.replaceExtension inputPath "class"
