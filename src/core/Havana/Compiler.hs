@@ -1,15 +1,15 @@
 module Havana.Compiler where
 
-import qualified Data.String as S
+import Data.Either (either)
 import qualified System.FilePath as Path
-import qualified Text.ParserCombinators.Parsec as Parsec
 
 import qualified Havana.Parser as Parser
 import qualified Havana.Serializer as Serializer
 
-compile :: String -> IO ()
+compile :: FilePath -> IO ()
 compile inputPath = do
-    ast <- Parsec.parseFromFile Parser.parser inputPath
+    result <- Parser.parse inputPath
+    let ast = either (error . Parser.parseErrors) id result
     Serializer.serializeToFile ast outputPath
     return ()
     where
