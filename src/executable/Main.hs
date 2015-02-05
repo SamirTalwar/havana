@@ -6,4 +6,4 @@ import qualified Havana.Compiler
 
 main = do
     args <- System.Environment.getArgs
-    Havana.Compiler.compile (args !! 0)
+    Havana.Compiler.compile (head args)

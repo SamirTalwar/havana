@@ -47,8 +47,8 @@ acceptanceTestDir = fromText "acceptance"
 tmpDir = fromText "tmp"
 havanacRelativePath = fromText "dist/build/havanac/havanac"
 
-acceptanceTestCases = do
-    return [TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class") [testFile "Alpha.java"]]
+acceptanceTestCases = return [
+    TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class") [testFile "Alpha.java"]]
 
 main = shelly $ do
     checkJavaVersion "1.8"
@@ -58,7 +58,7 @@ main = shelly $ do
 
     let context = TestContext { javac = fromText "javac", havanac = havanac, tmpPath = tmpPath }
     tests <- acceptanceTestCases
-    forM tests $ \testCase -> do
+    forM tests $ \testCase ->
         execute testCase context
 
 checkJavaVersion version = do
@@ -71,11 +71,10 @@ instance Executable TestCase where
     execute testCase context = do
         echo (testName testCase)
         cd (directory testCase)
-        forM (files testCase) $ \file -> do
+        forM_ (files testCase) $ \file -> do
             javacOutputFile <- compile "javac" file (tmpPath context) (cmd (javac context))
             havanaOutputFile <- compile "havana" file (tmpPath context) (cmd (havanac context))
             highlightOutput $ cmd "cmp" javacOutputFile havanaOutputFile
-        return ()
 
 instance Executable DisabledTestCase where
     execute testCase context = coloredAs yellow $ do
@@ -83,7 +82,7 @@ instance Executable DisabledTestCase where
         echo (disabledTestName testCase)
 
 compile prefix file outputPath compiler = do
-    let destination = outputPath </> (prefix ++ "-" ++ (fromPath $ outputFile file))
+    let destination = outputPath </> (prefix ++ "-" ++ fromPath (outputFile file))
     compiler (inputFile file)
     cp (outputFile file) destination
     rm (outputFile file)

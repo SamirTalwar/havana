@@ -16,7 +16,7 @@ parse :: FilePath -> IO (Either ParseError AST)
 parse inputPath = parseFromFile (parser inputPath) inputPath
 
 parseErrors :: ParseError -> String
-parseErrors = (error . concatenateWith "\n" . map Error.messageString . Error.errorMessages)
+parseErrors = error . concatenateWith "\n" . map Error.messageString . Error.errorMessages
     where
     concatenateWith :: Monoid.Monoid a => a -> [a] -> a
     concatenateWith separator = Monoid.mconcat . List.intersperse separator
