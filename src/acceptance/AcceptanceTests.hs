@@ -48,7 +48,7 @@ tmpDir = fromText "tmp"
 havanacRelativePath = fromText "dist/build/havanac/havanac"
 
 acceptanceTestCases = do
-    return [disabled $ TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class") [testFile "Alpha.java"]]
+    return [TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class") [testFile "Alpha.java"]]
 
 main = shelly $ do
     checkJavaVersion "1.8"
