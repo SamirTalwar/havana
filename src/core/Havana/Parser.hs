@@ -9,12 +9,11 @@ import Data.Functor ((<$>))
 import qualified Data.List as List
 import qualified Data.Monoid as Monoid
 import Text.Parsec
+import Text.Parsec.String
 import qualified Text.Parsec.Error as Error
 
 parse :: FilePath -> IO (Either ParseError AST)
-parse inputPath = do
-    input <- readFile inputPath
-    runParserT (parser inputPath) () inputPath input
+parse inputPath = parseFromFile (parser inputPath) inputPath
 
 parseErrors :: ParseError -> String
 parseErrors = (error . concatenateWith "\n" . map Error.messageString . Error.errorMessages)
