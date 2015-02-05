@@ -14,7 +14,7 @@ import qualified Text.Parsec.Error as Error
 parse :: FilePath -> IO (Either ParseError AST)
 parse inputPath = do
     input <- readFile inputPath
-    runParserT parser () inputPath input
+    runParserT (parser inputPath) () inputPath input
 
 parseErrors :: ParseError -> String
 parseErrors = (error . concatenateWith "\n" . map Error.messageString . Error.errorMessages)
@@ -22,14 +22,14 @@ parseErrors = (error . concatenateWith "\n" . map Error.messageString . Error.er
     concatenateWith :: Monoid.Monoid a => a -> [a] -> a
     concatenateWith separator = Monoid.mconcat . List.intersperse separator
 
-parser :: Stream s m Char => ParsecT s u m AST
-parser = do
+parser :: Stream s m Char => FilePath -> ParsecT s u m AST
+parser filePath = do
     string "class"
     whitespace
     className <- javaToken
     whitespace
     between (char '{') (char '}') whitespace
-    return (Class className)
+    return (Class filePath className)
 
 whitespace :: Stream s m Char => ParsecT s u m String
 whitespace = many1 space

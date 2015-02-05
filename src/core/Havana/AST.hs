@@ -1,4 +1,4 @@
 module Havana.AST where
 
-data AST = Class String
+data AST = Class FilePath String
          deriving (Show)
