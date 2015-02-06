@@ -13,29 +13,13 @@ import qualified Havana.Compiler
 
 default (T.Text)
 
-data TestCase = TestCase {
-    testName :: T.Text,
-    directory :: Shelly.FilePath,
-    files :: [TestFile]
-}
+data TestCase =
+        TestCase { testName :: T.Text, directory :: Shelly.FilePath, files :: [TestFile] }
+      | DisabledTestCase { disabledTestName :: T.Text }
 
-data DisabledTestCase = DisabledTestCase {
-    disabledTestName :: T.Text
-}
+data TestFile = TestFile { inputFile :: Shelly.FilePath, outputFile :: Shelly.FilePath }
 
-data TestFile = TestFile {
-    inputFile :: Shelly.FilePath,
-    outputFile :: Shelly.FilePath
-}
-
-data TestContext = TestContext {
-    javac :: Shelly.FilePath,
-    havanac :: Shelly.FilePath,
-    tmpPath :: Shelly.FilePath
-}
-
-class Executable a where
-    execute :: a -> TestContext -> Sh ()
+data TestContext = TestContext { javac :: Shelly.FilePath, havanac :: Shelly.FilePath, tmpPath :: Shelly.FilePath }
 
 testFile inputFile = TestFile inputFile outputFile
     where
@@ -67,19 +51,17 @@ checkJavaVersion version = do
     unless (("javac " `T.append` version) `T.isPrefixOf` T.strip javacVersion)
         (errorExit (T.concat ["Running the acceptance tests requires Java ", version, " or higher."]))
 
-instance Executable TestCase where
-    execute testCase context = do
-        echo (testName testCase)
-        cd (directory testCase)
-        forM_ (files testCase) $ \file -> do
-            javacOutputFile <- compile "javac" file (tmpPath context) (cmd (javac context))
-            havanaOutputFile <- compile "havana" file (tmpPath context) (cmd (havanac context))
-            highlightOutput $ cmd "cmp" javacOutputFile havanaOutputFile
-
-instance Executable DisabledTestCase where
-    execute testCase context = coloredAs yellow $ do
-        echo_n "DISABLED: "
-        echo (disabledTestName testCase)
+execute :: TestCase -> TestContext -> Sh ()
+execute (TestCase testName directory files) context = do
+    echo testName
+    cd directory
+    forM_ files $ \file -> do
+        javacOutputFile <- compile "javac" file (tmpPath context) (cmd (javac context))
+        havanaOutputFile <- compile "havana" file (tmpPath context) (cmd (havanac context))
+        highlightOutput $ cmd "cmp" javacOutputFile havanaOutputFile
+execute (DisabledTestCase testName) context = coloredAs yellow $ do
+    echo_n "DISABLED: "
+    echo testName
 
 compile prefix file outputPath compiler = do
     let destination = outputPath </> (prefix ++ "-" ++ fromPath (outputFile file))
