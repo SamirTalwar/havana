@@ -1,0 +1,5 @@
+language: haskell
+
+notifications:
+    email:
+        - samir@noodlesandwich.com
