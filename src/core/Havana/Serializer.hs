@@ -10,7 +10,7 @@ serializeToFile :: AST -> FilePath -> IO ()
 serializeToFile ast outputPath = ByteString.writeFile outputPath (ByteString.pack $ serialize ast)
 
 serialize :: AST -> [Word.Word8]
-serialize (Class filePath className) = map fromIntegral $ concat [
+serialize (JavaClass filePath className methods) = map fromIntegral $ concat [
     [0xca, 0xfe, 0xba, 0xbe, 0x00, 0x00, 0x00, 0x34, 0x00, 0x0d, 0x0a, 0x00, 0x03, 0x00, 0x0a, 0x07, 0x00, 0x0b, 0x07, 0x00, 0x0c],
 
     text "<init>", text "()V", text "Code", text "LineNumberTable", text "SourceFile", text filePath,
