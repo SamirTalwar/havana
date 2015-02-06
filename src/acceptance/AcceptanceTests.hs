@@ -58,7 +58,8 @@ execute (TestCase testName directory files) context = do
     forM_ files $ \file -> do
         javacOutputFile <- compile "javac" file (tmpPath context) (cmd (javac context))
         havanaOutputFile <- compile "havana" file (tmpPath context) (cmd (havanac context))
-        highlightOutput $ cmd "cmp" javacOutputFile havanaOutputFile
+        exitCode <- highlightOutput $ cmd "cmp" javacOutputFile havanaOutputFile
+        exitOnFailure exitCode
 execute (DisabledTestCase testName) context = coloredAs yellow $ do
     echo_n "DISABLED: "
     echo testName
@@ -73,11 +74,13 @@ compile prefix file outputPath compiler = do
 fromPath = T.unpack . toTextIgnore
 
 highlightOutput command = do
-    output <- errExit False command
+    output <- errExit False (silently command)
     exitCode <- lastExitCode
     let color = if exitCode > 0 then red else green
     coloredAs color $ echo_n output
-    when (exitCode > 0) (exit exitCode)
+    return exitCode
+
+exitOnFailure exitCode = when (exitCode > 0) (quietExit exitCode)
 
 coloredAs color action = do
     echo_n color
