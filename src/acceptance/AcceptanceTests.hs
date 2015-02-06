@@ -13,6 +13,12 @@ import qualified Havana.Compiler
 
 default (T.Text)
 
+acceptanceTestCases = [
+    TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class")
+            [testFile "Alpha.java"],
+    disabled $ TestCase "002: Empty Methods" (acceptanceTestDir </> "002-empty-methods")
+            [testFile "EmptyMethods.java"]]
+
 data TestCase =
         TestCase { testName :: T.Text, directory :: Shelly.FilePath, files :: [TestFile] }
       | DisabledTestCase { disabledTestName :: T.Text }
@@ -31,9 +37,6 @@ acceptanceTestDir = fromText "acceptance"
 tmpDir = fromText "tmp"
 havanacRelativePath = fromText "dist/build/havanac/havanac"
 
-acceptanceTestCases = return [
-    TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class") [testFile "Alpha.java"]]
-
 main = shelly $ do
     checkJavaVersion "1.8"
     havanac <- absPath havanacRelativePath
@@ -41,7 +44,7 @@ main = shelly $ do
     mkdir_p tmpPath
 
     let context = TestContext { javac = fromText "javac", havanac = havanac, tmpPath = tmpPath }
-    tests <- acceptanceTestCases
+    let tests = acceptanceTestCases
     forM tests $ \testCase ->
         execute testCase context
 
@@ -54,8 +57,7 @@ checkJavaVersion version = do
 execute :: TestCase -> TestContext -> Sh ()
 execute (TestCase testName directory files) context = do
     echo testName
-    cd directory
-    forM_ files $ \file -> do
+    chdir directory $ forM_ files $ \file -> do
         javacOutputFile <- compile "javac" file (tmpPath context) (cmd (javac context))
         havanaOutputFile <- compile "havana" file (tmpPath context) (cmd (havanac context))
         exitCode <- highlightOutput $ cmd "cmp" javacOutputFile havanaOutputFile
