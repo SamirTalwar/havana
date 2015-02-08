@@ -29,4 +29,4 @@ Test-Suite acceptance-tests
   type:                exitcode-stdio-1.0
   main-is:             AcceptanceTests.hs
   hs-source-dirs:      src/acceptance
-  build-depends:       havana, base ==4.7.*, shelly, directory, filepath, text
+  build-depends:       havana, base ==4.7.*, shelly, bytestring, directory, filepath, text
