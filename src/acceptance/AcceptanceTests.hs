@@ -23,7 +23,7 @@ acceptanceTestCases = [
     TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class")
             [testFile "Alpha.java"],
     TestCase "002: Empty Methods" (acceptanceTestDir </> "002-empty-methods")
-            [testFile "EmptyMethod.java", DisabledTestFile "EmptyMethods.java"]]
+            [testFile "EmptyMethods.java"]]
 
 data TestCase =
         TestCase { testName :: T.Text, directory :: Shelly.FilePath, files :: [TestFile] }
@@ -57,6 +57,7 @@ main = shelly $ do
     checkJavaVersion "1.8"
     havanac <- absPath havanacRelativePath
     tmpPath <- absPath tmpDir
+    rm_rf tmpPath
     mkdir_p tmpPath
 
     let context = TestContext { javac = fromText "javac", havanac = havanac, tmpPath = tmpPath }

@@ -1,9 +1,17 @@
 class EmptyMethods {
-    public void publicMethod() { }
+    public void publicMethodA() { }
 
-    void defaultAccessMethod() { }
+    void defaultAccessMethodA() { }
 
-    protected void protectedMethod() { }
+    protected void protectedMethodA() { }
 
-    private void privateMethod() { }
+    private void privateMethodA() { }
+
+    private void privateMethodB() { }
+
+    void defaultAccessMethodB() { }
+
+    public void publicMethodB() { }
+
+    protected void protectedMethodB() { }
 }
