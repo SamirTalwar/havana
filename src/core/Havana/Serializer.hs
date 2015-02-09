@@ -4,6 +4,7 @@ module Havana.Serializer where
 
 import Havana.AST
 
+import Data.Bits
 import qualified Data.ByteString as ByteString
 import qualified Data.Char as Char
 import Data.Word (Word8)
@@ -71,13 +72,13 @@ instance Serializable [JavaMethod] where
 
 instance Serializable JavaAccessModifiers where
     serialize (JavaAccessModifiers visibilityModifier staticModifier) =
-        int16 $
-            (if staticModifier then 8 else 0)
-            + (case visibilityModifier of
-                   DefaultAccess -> 0
-                   Public -> 1
-                   Private -> 2
-                   Protected -> 4)
+        int16 $ zeroBits
+            .|. (if staticModifier then bit 3 else zeroBits)
+            .|. (case visibilityModifier of
+                     DefaultAccess -> zeroBits
+                     Public -> bit 0
+                     Private -> bit 1
+                     Protected -> bit 2)
 
 text :: String -> [Word8]
 text string = map fromIntegral $ [0x01, 0x00, length string] ++ map Char.ord string
