@@ -23,7 +23,10 @@ acceptanceTestCases = [
     TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class")
             [testFile "Alpha.java"],
     TestCase "002: Empty Methods" (acceptanceTestDir </> "002-empty-methods")
-            [testFile "EmptyMethods.java"]]
+            [testFile "EmptyMethods.java"],
+    TestCase "003: Class Modifiers" (acceptanceTestDir </> "003-class-modifiers")
+            [testFile "PublicClass.java",
+             testFile "DefaultAccessClass.java"]]
 
 data TestCase =
         TestCase { testName :: T.Text, directory :: Shelly.FilePath, files :: [TestFile] }
@@ -95,8 +98,8 @@ test (TestContext javac havanac tmpPath) (TestFile inputFile outputFile) = do
         Just (byteIndex, byteA, byteB) -> do
             coloredAs red $ echo $ T.pack $ printf (
                 "    At byte %04d (0x%04x), the values differ.\n"
-                ++ "      In file %s, it is: %02x\n"
-                ++ "      In file %s, it is: %02x\n"
+                ++ "      In file %s, it is: 0x%02x\n"
+                ++ "      In file %s, it is: 0x%02x\n"
                 ) byteIndex byteIndex (fromPath javacOutputFile) byteA (fromPath havanaOutputFile) byteB
             return Failure
         Nothing ->

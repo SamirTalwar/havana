@@ -1,6 +1,10 @@
 module Havana.AST where
 
-data AST = JavaClass { filePath :: FilePath, className :: JavaToken, methods :: [JavaMethod] }
+data AST = JavaClass {
+         filePath :: FilePath,
+         className :: JavaToken,
+         classAccessModifiers :: JavaAccessModifiers,
+         methods :: [JavaMethod] }
         deriving (Show)
 
 data JavaType = Void
@@ -9,8 +13,8 @@ instance Show JavaType where
 
 data JavaMethod = JavaMethod {
                 methodName :: JavaToken,
-                returnType :: JavaType,
-                accessModifiers :: JavaAccessModifiers }
+                methodAccessModifiers :: JavaAccessModifiers,
+                returnType :: JavaType }
         deriving (Show)
 
 data JavaAccessModifiers = JavaAccessModifiers {

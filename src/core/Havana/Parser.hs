@@ -5,6 +5,7 @@ module Havana.Parser where
 import Havana.AST
 
 import Control.Applicative ((<*), (<*>))
+import Control.Monad (when)
 import Data.Functor ((<$>))
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe
@@ -27,18 +28,22 @@ parser = javaClass
 
 javaClass :: Stream s m Char => FilePath -> ParsecT s u m AST
 javaClass filePath = do
+    accessModifiers <- javaClassAccessModifiers
     string "class"
     whitespace
     className <- javaToken
     optionalWhitespace
     methods <- between (char '{') (char '}') javaMethods
-    return JavaClass { filePath = filePath, className = className, methods = methods }
+    return JavaClass { filePath = filePath,
+                       className = className,
+                       classAccessModifiers = accessModifiers,
+                       methods = methods }
 
 javaMethods :: Stream s m Char => ParsecT s u m [JavaMethod]
 javaMethods = do
     optionalWhitespace
     many $ do
-        accessModifiers <- javaAccessModifiers
+        accessModifiers <- javaMethodAccessModifiers
         returnType <- javaType
         whitespace
         methodName <- javaToken
@@ -48,24 +53,29 @@ javaMethods = do
         optionalWhitespace
         return JavaMethod {
             methodName = methodName,
-            returnType = returnType,
-            accessModifiers = accessModifiers }
+            methodAccessModifiers = accessModifiers,
+            returnType = returnType }
 
 
-validJavaAccessModifiers = validJavaVisibilityModifiers ++ [validJavaStaticModifier]
 validJavaVisibilityModifiers = ["public", "protected", "private"]
-validJavaStaticModifier = "static"
+javaStaticModifierString = "static"
 
-javaAccessModifiers :: Stream s m Char => ParsecT s u m JavaAccessModifiers
-javaAccessModifiers = do
-    modifiers <- many $ choice (map (try . string) validJavaAccessModifiers) <* whitespace
+javaClassAccessModifiers :: Stream s m Char => ParsecT s u m JavaAccessModifiers
+javaClassAccessModifiers = javaAccessModifiers ["public"]
+
+javaMethodAccessModifiers :: Stream s m Char => ParsecT s u m JavaAccessModifiers
+javaMethodAccessModifiers = javaAccessModifiers $ validJavaVisibilityModifiers ++ [javaStaticModifierString]
+
+javaAccessModifiers :: Stream s m Char => [String] -> ParsecT s u m JavaAccessModifiers
+javaAccessModifiers validModifiers = do
+    modifiers <- many $ choice (map (try . string) validModifiers) <* whitespace
     let visibilityModifierString = List.find (`elem` validJavaVisibilityModifiers) modifiers
     let visibilityModifier = case visibilityModifierString of
                                  Just "public" -> Public
                                  Just "protected" -> Protected
                                  Just "private" -> Private
                                  Nothing -> DefaultAccess
-    let staticModifier = Maybe.isJust $ List.find (== validJavaStaticModifier) modifiers
+    let staticModifier = Maybe.isJust $ List.find (== javaStaticModifierString) modifiers
     return JavaAccessModifiers { visibilityModifier = visibilityModifier, staticModifier = staticModifier }
 
 javaType :: Stream s m Char => ParsecT s u m JavaType
