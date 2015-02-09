@@ -12,13 +12,13 @@ serializeToFile ast outputPath = ByteString.writeFile outputPath (ByteString.pac
 serialize :: AST -> [Word.Word8]
 serialize (JavaClass filePath className methods) = map fromIntegral $ concat [
     [0xca, 0xfe, 0xba, 0xbe, 0x00, 0x00, 0x00, 0x34],
-    word16 (13 + count),
+    int16 (13 + count),
     [0x0a, 0x00, 0x03],
-    word16 (10 + count),
+    int16 (10 + count),
     [0x07],
-    word16 (11 + count),
+    int16 (11 + count),
     [0x07],
-    word16 (12 + count),
+    int16 (12 + count),
 
     text "<init>", text "()V", text "Code",
 
@@ -32,7 +32,7 @@ serialize (JavaClass filePath className methods) = map fromIntegral $ concat [
 
     [0x00, 0x20, 0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00],
 
-    word16 (1 + count),
+    int16 (1 + count),
 
     [0x00, 0x00, 0x00, 0x04],
 
@@ -50,24 +50,24 @@ serialize (JavaClass filePath className methods) = map fromIntegral $ concat [
              0x00, 0x01, 0xb1, 0x00, 0x00, 0x00, 0x01, 0x00,
              0x07, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00,
              0x00]
-            ++ word16 (index * 2)
-            ++ word16 (case visibilityModifier of
+            ++ int16 (index * 2)
+            ++ int16 (case visibilityModifier of
                            DefaultAccess -> 0
                            Public -> 1
                            Private -> 2
                            Protected -> 4)
-            ++ word16 (8 + index)),
+            ++ int16 (8 + index)),
 
     [0x00, 0x00, 0x00, 0x02],
 
-    word16 (9 + count)]
+    int16 (9 + count)]
 
     where
     count = length methods
 
 text string = [0x01, 0x00, length string] ++ map Char.ord string
 
-word16 byte = [0x00, byte]
+int16 byte = [0x00, byte]
 
 rotateLeft [] = []
 rotateLeft (x : xs) = xs ++ [x]
