@@ -5,6 +5,7 @@
 import Shelly
 import Control.Monad
 import qualified Data.ByteString as BS
+import Data.Monoid (Monoid, mappend, mconcat, mempty)
 import qualified Data.List as L
 import qualified Data.String as S
 import qualified Data.Text as T
@@ -22,7 +23,7 @@ acceptanceTestCases = [
     TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class")
             [testFile "Alpha.java"],
     disabled $ TestCase "002: Empty Methods" (acceptanceTestDir </> "002-empty-methods")
-            [testFile "EmptyMethods.java"]]
+            [testFile "EmptyMethod.java"]]
 
 data TestCase =
         TestCase { testName :: T.Text, directory :: Shelly.FilePath, files :: [TestFile] }
@@ -31,6 +32,14 @@ data TestCase =
 data TestFile = TestFile { inputFile :: Shelly.FilePath, outputFile :: Shelly.FilePath }
 
 data TestContext = TestContext { javac :: Shelly.FilePath, havanac :: Shelly.FilePath, tmpPath :: Shelly.FilePath }
+
+data TestResult = Success | Failure | Disabled
+    deriving (Eq, Show)
+instance Monoid TestResult where
+    mempty = Success
+    Success `mappend` x = x
+    Failure `mappend` _ = Failure
+    Disabled `mappend` x = x
 
 testFile inputFile = TestFile inputFile outputFile
     where
@@ -50,8 +59,10 @@ main = shelly $ do
 
     let context = TestContext { javac = fromText "javac", havanac = havanac, tmpPath = tmpPath }
     let tests = acceptanceTestCases
-    forM tests $ \testCase ->
+    results <- forM tests $ \testCase ->
         execute testCase context
+    when (mconcat results == Failure) $
+        quietExit 1
 
 checkJavaVersion version = do
     silently $ cmd "javac" "-version"
@@ -59,10 +70,10 @@ checkJavaVersion version = do
     unless (("javac " `T.append` version) `T.isPrefixOf` T.strip javacVersion)
         (errorExit (T.concat ["Running the acceptance tests requires Java ", version, " or higher."]))
 
-execute :: TestCase -> TestContext -> Sh ()
+execute :: TestCase -> TestContext -> Sh TestResult
 execute (TestCase testName directory files) context = do
     echo testName
-    chdir directory $ forM_ files $ \file -> do
+    results <- chdir directory $ forM files $ \file -> do
         javacOutputFile <- compile "javac" file (tmpPath context) (cmd (javac context))
         havanaOutputFile <- compile "havana" file (tmpPath context) (cmd (havanac context))
         comparisonFailure <- liftIO $ compareFiles javacOutputFile havanaOutputFile
@@ -73,11 +84,15 @@ execute (TestCase testName directory files) context = do
                     ++ "  In file %s, it is: %02x\n"
                     ++ "  In file %s, it is: %02x\n"
                     ) byteIndex byteIndex (fromPath javacOutputFile) byteA (fromPath havanaOutputFile) byteB
-                quietExit 1
-            Nothing -> return ()
-execute (DisabledTestCase testName) context = coloredAs yellow $ do
-    echo_n "DISABLED: "
-    echo testName
+                return Failure
+            Nothing ->
+                return Success
+    return $ mconcat results
+execute (DisabledTestCase testName) context = do
+    coloredAs yellow $ do
+        echo_n "DISABLED: "
+        echo testName
+    return Disabled
 
 compile prefix file outputPath compiler = do
     let destination = outputPath </> (prefix ++ "-" ++ fromPath (outputFile file))
