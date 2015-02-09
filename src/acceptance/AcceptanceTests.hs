@@ -22,7 +22,7 @@ default (T.Text)
 acceptanceTestCases = [
     TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class")
             [testFile "Alpha.java"],
-    disabled $ TestCase "002: Empty Methods" (acceptanceTestDir </> "002-empty-methods")
+    TestCase "002: Empty Methods" (acceptanceTestDir </> "002-empty-methods")
             [testFile "EmptyMethod.java"]]
 
 data TestCase =
