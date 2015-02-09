@@ -3,7 +3,7 @@ module Havana.AST where
 data AST = JavaClass {
          filePath :: FilePath,
          className :: JavaToken,
-         classAccessModifiers :: JavaAccessModifiers,
+         classModifiers :: JavaModifiers,
          methods :: [JavaMethod] }
         deriving (Show)
 
@@ -13,13 +13,13 @@ instance Show JavaType where
 
 data JavaMethod = JavaMethod {
                 methodName :: JavaToken,
-                methodAccessModifiers :: JavaAccessModifiers,
+                methodModifiers :: JavaModifiers,
                 returnType :: JavaType }
         deriving (Show)
 
-data JavaAccessModifiers = JavaAccessModifiers {
-                         visibilityModifier :: JavaVisibilityModifier,
-                         staticModifier :: JavaStaticModifier }
+data JavaModifiers = JavaModifiers {
+                   visibilityModifier :: JavaVisibilityModifier,
+                   staticModifier :: JavaStaticModifier }
         deriving (Show)
 
 type JavaStaticModifier = Bool

@@ -16,7 +16,7 @@ class Serializable a where
     serialize :: a -> [Word8]
 
 instance Serializable AST where
-    serialize (JavaClass filePath className accessModifiers methods) = concat [
+    serialize (JavaClass filePath className modifiers methods) = concat [
         [0xca, 0xfe, 0xba, 0xbe, 0x00, 0x00, 0x00, 0x34],
         int16 (13 + count),
         [0x0a, 0x00, 0x03],
@@ -36,13 +36,13 @@ instance Serializable AST where
 
         text className, text "java/lang/Object",
 
-        int16 (0x20 + accessModifiersAsBits accessModifiers),
+        int16 (0x20 + modifiersAsBits modifiers),
 
         [0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00],
 
         int16 (1 + count),
 
-        serialize accessModifiers,
+        serialize modifiers,
         [0x00, 0x04, 0x00, 0x05, 0x00, 0x01, 0x00, 0x06,
          0x00, 0x00, 0x00, 0x1d, 0x00, 0x01, 0x00, 0x01,
          0x00, 0x00, 0x00, 0x05, 0x2a, 0xb7, 0x00, 0x01,
@@ -62,21 +62,21 @@ instance Serializable AST where
 
 instance Serializable [JavaMethod] where
     serialize methods = zip [0..] methods >>=
-        (\(index, JavaMethod _ accessModifiers _) -> concat [
-            serialize accessModifiers,
+        (\(index, JavaMethod _ modifiers _) -> concat [
+            serialize modifiers,
             int16 (8 + index),
             [0x00, 0x05, 0x00, 0x01, 0x00, 0x06, 0x00, 0x00,
              0x00, 0x19, 0x00, 0x00],
-            int16 (if staticModifier accessModifiers then 0 else 1),
+            int16 (if staticModifier modifiers then 0 else 1),
             [0x00, 0x00, 0x00, 0x01, 0xb1, 0x00, 0x00, 0x00,
              0x01, 0x00, 0x07, 0x00, 0x00, 0x00, 0x06, 0x00,
              0x01, 0x00, 0x00],
             int16 ((index + 1) * 2)])
 
-instance Serializable JavaAccessModifiers where
-    serialize = int16 . accessModifiersAsBits
+instance Serializable JavaModifiers where
+    serialize = int16 . modifiersAsBits
 
-accessModifiersAsBits (JavaAccessModifiers visibilityModifier staticModifier) =
+modifiersAsBits (JavaModifiers visibilityModifier staticModifier) =
     zeroBits
         .|. (if staticModifier then bit 3 else zeroBits)
         .|. (case visibilityModifier of

@@ -28,7 +28,7 @@ parser = javaClass
 
 javaClass :: Stream s m Char => FilePath -> ParsecT s u m AST
 javaClass filePath = do
-    accessModifiers <- javaClassAccessModifiers
+    modifiers <- javaClassModifiers
     string "class"
     whitespace
     className <- javaToken
@@ -36,14 +36,14 @@ javaClass filePath = do
     methods <- between (char '{') (char '}') javaMethods
     return JavaClass { filePath = filePath,
                        className = className,
-                       classAccessModifiers = accessModifiers,
+                       classModifiers = modifiers,
                        methods = methods }
 
 javaMethods :: Stream s m Char => ParsecT s u m [JavaMethod]
 javaMethods = do
     optionalWhitespace
     many $ do
-        accessModifiers <- javaMethodAccessModifiers
+        modifiers <- javaMethodModifiers
         returnType <- javaType
         whitespace
         methodName <- javaToken
@@ -53,21 +53,21 @@ javaMethods = do
         optionalWhitespace
         return JavaMethod {
             methodName = methodName,
-            methodAccessModifiers = accessModifiers,
+            methodModifiers = modifiers,
             returnType = returnType }
 
 
 validJavaVisibilityModifiers = ["public", "protected", "private"]
 javaStaticModifierString = "static"
 
-javaClassAccessModifiers :: Stream s m Char => ParsecT s u m JavaAccessModifiers
-javaClassAccessModifiers = javaAccessModifiers ["public"]
+javaClassModifiers :: Stream s m Char => ParsecT s u m JavaModifiers
+javaClassModifiers = javaModifiers ["public"]
 
-javaMethodAccessModifiers :: Stream s m Char => ParsecT s u m JavaAccessModifiers
-javaMethodAccessModifiers = javaAccessModifiers $ validJavaVisibilityModifiers ++ [javaStaticModifierString]
+javaMethodModifiers :: Stream s m Char => ParsecT s u m JavaModifiers
+javaMethodModifiers = javaModifiers $ validJavaVisibilityModifiers ++ [javaStaticModifierString]
 
-javaAccessModifiers :: Stream s m Char => [String] -> ParsecT s u m JavaAccessModifiers
-javaAccessModifiers validModifiers = do
+javaModifiers :: Stream s m Char => [String] -> ParsecT s u m JavaModifiers
+javaModifiers validModifiers = do
     modifiers <- many $ choice (map (try . string) validModifiers) <* whitespace
     let visibilityModifierString = List.find (`elem` validJavaVisibilityModifiers) modifiers
     let visibilityModifier = case visibilityModifierString of
@@ -76,7 +76,7 @@ javaAccessModifiers validModifiers = do
                                  Just "private" -> Private
                                  Nothing -> DefaultAccess
     let staticModifier = Maybe.isJust $ List.find (== javaStaticModifierString) modifiers
-    return JavaAccessModifiers { visibilityModifier = visibilityModifier, staticModifier = staticModifier }
+    return JavaModifiers { visibilityModifier = visibilityModifier, staticModifier = staticModifier }
 
 javaType :: Stream s m Char => ParsecT s u m JavaType
 javaType = string "void" >> return Void
