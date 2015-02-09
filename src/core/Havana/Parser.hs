@@ -4,9 +4,10 @@ module Havana.Parser where
 
 import Havana.AST
 
-import Control.Applicative ((<*>))
+import Control.Applicative ((<*), (<*>))
 import Data.Functor ((<$>))
 import qualified Data.List as List
+import qualified Data.Maybe as Maybe
 import qualified Data.Monoid as Monoid
 import Text.Parsec
 import Text.Parsec.String
@@ -37,8 +38,7 @@ javaMethods :: Stream s m Char => ParsecT s u m [JavaMethod]
 javaMethods = do
     optionalWhitespace
     many $ do
-        visibilityModifier <- javaVisibilityModifier
-        optionalWhitespace
+        accessModifiers <- javaAccessModifiers
         returnType <- javaType
         whitespace
         methodName <- javaToken
@@ -49,14 +49,24 @@ javaMethods = do
         return JavaMethod {
             methodName = methodName,
             returnType = returnType,
-            visibilityModifier = visibilityModifier }
+            accessModifiers = accessModifiers }
 
-javaVisibilityModifier :: Stream s m Char => ParsecT s u m JavaVisibilityModifier
-javaVisibilityModifier = choice [
-    try (string "public ") >> return Public,
-    try (string "protected ") >> return Protected,
-    try (string "private ") >> return Private,
-    return DefaultAccess]
+
+validJavaAccessModifiers = validJavaVisibilityModifiers ++ [validJavaStaticModifier]
+validJavaVisibilityModifiers = ["public", "protected", "private"]
+validJavaStaticModifier = "static"
+
+javaAccessModifiers :: Stream s m Char => ParsecT s u m JavaAccessModifiers
+javaAccessModifiers = do
+    modifiers <- many $ choice (map (try . string) validJavaAccessModifiers) <* whitespace
+    let visibilityModifierString = List.find (`elem` validJavaVisibilityModifiers) modifiers
+    let visibilityModifier = case visibilityModifierString of
+                                 Just "public" -> Public
+                                 Just "protected" -> Protected
+                                 Just "private" -> Private
+                                 Nothing -> DefaultAccess
+    let staticModifier = Maybe.isJust $ List.find (== validJavaStaticModifier) modifiers
+    return JavaAccessModifiers { visibilityModifier = visibilityModifier, staticModifier = staticModifier }
 
 javaType :: Stream s m Char => ParsecT s u m JavaType
 javaType = string "void" >> return Void

@@ -10,8 +10,15 @@ instance Show JavaType where
 data JavaMethod = JavaMethod {
                 methodName :: JavaToken,
                 returnType :: JavaType,
-                visibilityModifier :: JavaVisibilityModifier }
+                accessModifiers :: JavaAccessModifiers }
         deriving (Show)
+
+data JavaAccessModifiers = JavaAccessModifiers {
+                         visibilityModifier :: JavaVisibilityModifier,
+                         staticModifier :: JavaStaticModifier }
+        deriving (Show)
+
+type JavaStaticModifier = Bool
 
 data JavaVisibilityModifier = Public | Protected | Private | DefaultAccess
 instance Show JavaVisibilityModifier where
