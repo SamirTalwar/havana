@@ -23,13 +23,15 @@ acceptanceTestCases = [
     TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class")
             [testFile "Alpha.java"],
     TestCase "002: Empty Methods" (acceptanceTestDir </> "002-empty-methods")
-            [testFile "EmptyMethod.java"]]
+            [testFile "EmptyMethod.java", DisabledTestFile "EmptyMethods.java"]]
 
 data TestCase =
         TestCase { testName :: T.Text, directory :: Shelly.FilePath, files :: [TestFile] }
       | DisabledTestCase { disabledTestName :: T.Text }
 
-data TestFile = TestFile { inputFile :: Shelly.FilePath, outputFile :: Shelly.FilePath }
+data TestFile =
+        TestFile { inputFile :: Shelly.FilePath, outputFile :: Shelly.FilePath }
+      | DisabledTestFile { file :: Shelly.FilePath }
 
 data TestContext = TestContext { javac :: Shelly.FilePath, havanac :: Shelly.FilePath, tmpPath :: Shelly.FilePath }
 
@@ -73,20 +75,7 @@ checkJavaVersion version = do
 execute :: TestCase -> TestContext -> Sh TestResult
 execute (TestCase testName directory files) context = do
     echo testName
-    results <- chdir directory $ forM files $ \file -> do
-        javacOutputFile <- compile "javac" file (tmpPath context) (cmd (javac context))
-        havanaOutputFile <- compile "havana" file (tmpPath context) (cmd (havanac context))
-        comparisonFailure <- liftIO $ compareFiles javacOutputFile havanaOutputFile
-        case comparisonFailure of
-            Just (byteIndex, byteA, byteB) -> do
-                coloredAs red $ echo $ T.pack $ printf (
-                    "At byte %04d (0x%04x), the values differ.\n"
-                    ++ "  In file %s, it is: %02x\n"
-                    ++ "  In file %s, it is: %02x\n"
-                    ) byteIndex byteIndex (fromPath javacOutputFile) byteA (fromPath havanaOutputFile) byteB
-                return Failure
-            Nothing ->
-                return Success
+    results <- chdir directory $ forM files $ test context
     return $ mconcat results
 execute (DisabledTestCase testName) context = do
     coloredAs yellow $ do
@@ -94,11 +83,34 @@ execute (DisabledTestCase testName) context = do
         echo testName
     return Disabled
 
-compile prefix file outputPath compiler = do
-    let destination = outputPath </> (prefix ++ "-" ++ fromPath (outputFile file))
-    compiler (inputFile file)
-    cp (outputFile file) destination
-    rm (outputFile file)
+test :: TestContext -> TestFile -> Sh TestResult
+test (TestContext javac havanac tmpPath) (TestFile inputFile outputFile) = do
+    echo_n "  "
+    echo $ toTextIgnore inputFile
+    javacOutputFile <- compile "javac" (cmd javac inputFile) outputFile tmpPath
+    havanaOutputFile <- compile "havana" (cmd havanac inputFile) outputFile tmpPath
+    comparisonFailure <- liftIO $ compareFiles javacOutputFile havanaOutputFile
+    case comparisonFailure of
+        Just (byteIndex, byteA, byteB) -> do
+            coloredAs red $ echo $ T.pack $ printf (
+                "    At byte %04d (0x%04x), the values differ.\n"
+                ++ "      In file %s, it is: %02x\n"
+                ++ "      In file %s, it is: %02x\n"
+                ) byteIndex byteIndex (fromPath javacOutputFile) byteA (fromPath havanaOutputFile) byteB
+            return Failure
+        Nothing ->
+            return Success
+test _ (DisabledTestFile file) = do
+    coloredAs yellow $ do
+        echo_n "  DISABLED: "
+        echo $ toTextIgnore file
+    return Disabled
+
+compile :: String -> Sh () -> Shelly.FilePath -> Shelly.FilePath -> Sh Shelly.FilePath
+compile prefix compilation outputFile outputPath = do
+    let destination = outputPath </> (prefix ++ "-" ++ fromPath outputFile)
+    compilation
+    mv outputFile destination
     return destination
 
 compareFiles :: Shelly.FilePath -> Shelly.FilePath -> IO (Maybe (Int, W.Word8, W.Word8))
