@@ -36,13 +36,13 @@ instance Serializable AST where
 
         text className, text "java/lang/Object",
 
-        int16 (0x20 + modifiersAsBits modifiers),
+        int16 (bit 5 .|. modifiersAsBits modifiers),
 
         [0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00],
 
         int16 (1 + count),
 
-        serialize modifiers,
+        serialize (exceptHierarchy modifiers),
         [0x00, 0x04, 0x00, 0x05, 0x00, 0x01, 0x00, 0x06,
          0x00, 0x00, 0x00, 0x1d, 0x00, 0x01, 0x00, 0x01,
          0x00, 0x00, 0x00, 0x05, 0x2a, 0xb7, 0x00, 0x01,
@@ -76,14 +76,18 @@ instance Serializable [JavaMethod] where
 instance Serializable JavaModifiers where
     serialize = int16 . modifiersAsBits
 
-modifiersAsBits (JavaModifiers visibilityModifier staticModifier) =
+modifiersAsBits (JavaModifiers visibilityModifier hierarchyModifier staticModifier) =
     zeroBits
-        .|. (if staticModifier then bit 3 else zeroBits)
         .|. (case visibilityModifier of
                  DefaultAccess -> zeroBits
                  Public -> bit 0
                  Private -> bit 1
                  Protected -> bit 2)
+        .|. (case hierarchyModifier of
+                 NoHierarchy -> zeroBits
+                 Abstract -> bit 10
+                 Final -> bit 4)
+        .|. (if staticModifier then bit 3 else zeroBits)
 
 text :: String -> [Word8]
 text string = map fromIntegral $ [0x01, 0x00, length string] ++ map Char.ord string
@@ -91,6 +95,5 @@ text string = map fromIntegral $ [0x01, 0x00, length string] ++ map Char.ord str
 int16 :: Int -> [Word8]
 int16 integer = [high8, low8]
     where
-    word = fromIntegral integer
-    low8 = word `mod` 0xff
-    high8 = word `div` 0xff
+    low8 = fromIntegral $ integer `mod` 0x100
+    high8 = fromIntegral $ integer `div` 0x100

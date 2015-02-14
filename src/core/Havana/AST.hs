@@ -19,10 +19,9 @@ data JavaMethod = JavaMethod {
 
 data JavaModifiers = JavaModifiers {
                    visibilityModifier :: JavaVisibilityModifier,
+                   hierarchyModifier :: JavaHierarchyModifier,
                    staticModifier :: JavaStaticModifier }
         deriving (Show)
-
-type JavaStaticModifier = Bool
 
 data JavaVisibilityModifier = Public | Protected | Private | DefaultAccess
 instance Show JavaVisibilityModifier where
@@ -30,5 +29,16 @@ instance Show JavaVisibilityModifier where
     show Protected = "protected"
     show Private = "private"
     show DefaultAccess = ""
+
+data JavaHierarchyModifier = NoHierarchy | Abstract | Final
+instance Show JavaHierarchyModifier where
+    show NoHierarchy = ""
+    show Abstract = "abstract"
+    show Final = "final"
+
+type JavaStaticModifier = Bool
+
+exceptHierarchy (JavaModifiers visibilityModifier _ staticModifier)
+    = JavaModifiers visibilityModifier NoHierarchy staticModifier
 
 type JavaToken = String

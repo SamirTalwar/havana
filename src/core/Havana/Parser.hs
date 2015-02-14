@@ -57,26 +57,32 @@ javaMethods = do
             returnType = returnType }
 
 
-validJavaVisibilityModifiers = ["public", "protected", "private"]
+javaVisibilityModifierStrings = ["public", "protected", "private"]
+javaHierarchyModifierStrings = ["abstract", "final"]
 javaStaticModifierString = "static"
 
 javaClassModifiers :: Stream s m Char => ParsecT s u m JavaModifiers
-javaClassModifiers = javaModifiers ["public"]
+javaClassModifiers = javaModifiers $ "public" : javaHierarchyModifierStrings
 
 javaMethodModifiers :: Stream s m Char => ParsecT s u m JavaModifiers
-javaMethodModifiers = javaModifiers $ validJavaVisibilityModifiers ++ [javaStaticModifierString]
+javaMethodModifiers = javaModifiers $ javaStaticModifierString : javaVisibilityModifierStrings
 
 javaModifiers :: Stream s m Char => [String] -> ParsecT s u m JavaModifiers
 javaModifiers validModifiers = do
     modifiers <- many $ choice (map (try . string) validModifiers) <* whitespace
-    let visibilityModifierString = List.find (`elem` validJavaVisibilityModifiers) modifiers
-    let visibilityModifier = case visibilityModifierString of
+    let visibilityModifier = case List.find (`elem` javaVisibilityModifierStrings) modifiers of
                                  Just "public" -> Public
                                  Just "protected" -> Protected
                                  Just "private" -> Private
                                  Nothing -> DefaultAccess
+    let hierarchyModifier = case List.find (`elem` javaHierarchyModifierStrings) modifiers of
+                                Just "abstract" -> Abstract
+                                Just "final" -> Final
+                                Nothing -> NoHierarchy
     let staticModifier = Maybe.isJust $ List.find (== javaStaticModifierString) modifiers
-    return JavaModifiers { visibilityModifier = visibilityModifier, staticModifier = staticModifier }
+    return JavaModifiers { visibilityModifier = visibilityModifier,
+                           hierarchyModifier = hierarchyModifier,
+                           staticModifier = staticModifier }
 
 javaType :: Stream s m Char => ParsecT s u m JavaType
 javaType = string "void" >> return Void

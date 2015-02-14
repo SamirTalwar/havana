@@ -26,7 +26,11 @@ acceptanceTestCases = [
             [testFile "EmptyMethods.java"],
     TestCase "003: Class Modifiers" (acceptanceTestDir </> "003-class-modifiers")
             [testFile "PublicClass.java",
-             testFile "DefaultAccessClass.java"]]
+             testFile "DefaultAccessClass.java",
+             testFile "PublicAbstractClass.java",
+             testFile "DefaultAccessAbstractClass.java",
+             testFile "PublicFinalClass.java",
+             testFile "DefaultAccessFinalClass.java"]]
 
 data TestCase =
         TestCase { testName :: T.Text, directory :: Shelly.FilePath, files :: [TestFile] }
