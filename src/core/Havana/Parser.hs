@@ -9,7 +9,6 @@ import Control.Monad (when)
 import Data.Functor ((<$>))
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe
-import qualified Data.Monoid as Monoid
 import Text.Parsec
 import Text.Parsec.String
 import qualified Text.Parsec.Error as Error
@@ -18,10 +17,7 @@ parse :: FilePath -> IO (Either ParseError AST)
 parse inputPath = parseFromFile (parser inputPath) inputPath
 
 parseErrors :: ParseError -> String
-parseErrors = error . concatenateWith "\n" . map Error.messageString . Error.errorMessages
-    where
-    concatenateWith :: Monoid.Monoid a => a -> [a] -> a
-    concatenateWith separator = Monoid.mconcat . List.intersperse separator
+parseErrors = ("expected one of: " ++) . List.intercalate ", " . map Error.messageString . Error.errorMessages
 
 parser :: Stream s m Char => FilePath -> ParsecT s u m AST
 parser = javaClass
