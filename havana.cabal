@@ -25,8 +25,14 @@ executable havanac
   hs-source-dirs:      src/executable
   build-depends:       havana, base ==4.7.*
 
-Test-Suite acceptance-tests
+Test-Suite test
+  type:                exitcode-stdio-1.0
+  main-is:             Tests.hs
+  hs-source-dirs:      test/core
+  build-depends:       havana, base ==4.7.*, hspec
+
+Test-Suite acceptance-test
   type:                exitcode-stdio-1.0
   main-is:             AcceptanceTests.hs
-  hs-source-dirs:      src/acceptance
+  hs-source-dirs:      test/acceptance
   build-depends:       havana, base ==4.7.*, shelly, bytestring, directory, filepath, text
