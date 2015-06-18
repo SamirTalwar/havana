@@ -17,7 +17,7 @@ parse :: FilePath -> IO (Either ParseError AST)
 parse inputPath = parseFromFile (parser inputPath) inputPath
 
 parseErrors :: ParseError -> String
-parseErrors = ("expected one of: " ++) . List.intercalate ", " . map Error.messageString . Error.errorMessages
+parseErrors = show
 
 parser :: Stream s m Char => FilePath -> ParsecT s u m AST
 parser = javaClass
