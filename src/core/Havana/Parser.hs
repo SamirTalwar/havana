@@ -10,6 +10,8 @@ import Data.Functor ((<$>))
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe
 import Text.Parsec
+import Text.Parsec.Pos
+import Text.Parsec.Prim
 import Text.Parsec.String
 import qualified Text.Parsec.Error as Error
 
@@ -24,6 +26,8 @@ parser = javaClass
 
 javaClass :: Stream s m Char => FilePath -> ParsecT s u m AST
 javaClass filePath = do
+    optionalWhitespace
+    lineNumber <- currentLineNumber
     modifiers <- javaClassModifiers
     string "class"
     whitespace
@@ -33,7 +37,8 @@ javaClass filePath = do
     return JavaClass { filePath = filePath,
                        className = className,
                        classModifiers = modifiers,
-                       methods = methods }
+                       methods = methods,
+                       classLineNumber = lineNumber }
 
 javaMethods :: Stream s m Char => ParsecT s u m [JavaMethod]
 javaMethods = do
@@ -43,14 +48,17 @@ javaMethods = do
         returnType <- javaType
         whitespace
         methodName <- javaToken
+        optionalWhitespace
         argumentList
         optionalWhitespace
         between (char '{') (char '}') optionalWhitespace
+        lineNumber <- currentLineNumber
         optionalWhitespace
         return JavaMethod {
             methodName = methodName,
             methodModifiers = modifiers,
-            returnType = returnType }
+            returnType = returnType,
+            methodLineNumber = lineNumber }
 
 
 javaVisibilityModifierStrings = ["public", "protected", "private"]
@@ -84,7 +92,7 @@ javaType :: Stream s m Char => ParsecT s u m JavaType
 javaType = string "void" >> return Void
 
 argumentList :: Stream s m Char => ParsecT s u m String
-argumentList = string "()"
+argumentList = string "(" >> optionalWhitespace >> string ")"
 
 javaToken :: Stream s m Char => ParsecT s u m JavaToken
 javaToken = (:) <$> letter <*> many alphaNum
@@ -94,3 +102,8 @@ whitespace = many1 space
 
 optionalWhitespace :: Stream s m Char => ParsecT s u m String
 optionalWhitespace = many space
+
+currentLineNumber :: Stream s m Char => ParsecT s u m LineNumber
+currentLineNumber = do
+    state <- getParserState
+    return $ sourceLine $ statePos state

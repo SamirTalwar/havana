@@ -4,7 +4,8 @@ data AST = JavaClass {
          filePath :: FilePath,
          className :: JavaToken,
          classModifiers :: JavaModifiers,
-         methods :: [JavaMethod] }
+         methods :: [JavaMethod],
+         classLineNumber :: LineNumber }
         deriving (Show)
 
 data JavaType = Void
@@ -14,7 +15,8 @@ instance Show JavaType where
 data JavaMethod = JavaMethod {
                 methodName :: JavaToken,
                 methodModifiers :: JavaModifiers,
-                returnType :: JavaType }
+                returnType :: JavaType,
+                methodLineNumber :: LineNumber }
         deriving (Show)
 
 data JavaModifiers = JavaModifiers {
@@ -42,3 +44,5 @@ exceptHierarchy (JavaModifiers visibilityModifier _ staticModifier)
     = JavaModifiers visibilityModifier NoHierarchy staticModifier
 
 type JavaToken = String
+
+type LineNumber = Int

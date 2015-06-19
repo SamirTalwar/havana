@@ -16,7 +16,7 @@ class Serializable a where
     serialize :: a -> [Word8]
 
 instance Serializable AST where
-    serialize (JavaClass filePath className modifiers methods) = concat [
+    serialize (JavaClass filePath className modifiers methods lineNumber) = concat [
         [0xca, 0xfe, 0xba, 0xbe, 0x00, 0x00, 0x00, 0x34],
         int16 (13 + count),
         [0x0a, 0x00, 0x03],
@@ -47,8 +47,9 @@ instance Serializable AST where
          0x00, 0x00, 0x00, 0x1d, 0x00, 0x01, 0x00, 0x01,
          0x00, 0x00, 0x00, 0x05, 0x2a, 0xb7, 0x00, 0x01,
          0xb1, 0x00, 0x00, 0x00, 0x01, 0x00, 0x07, 0x00,
-         0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x00, 0x00,
-         0x01],
+         0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x00],
+
+        int16 lineNumber,
 
         serialize methods,
 
@@ -62,7 +63,7 @@ instance Serializable AST where
 
 instance Serializable [JavaMethod] where
     serialize methods = zip [0..] methods >>=
-        (\(index, JavaMethod _ modifiers _) -> concat [
+        (\(index, JavaMethod _ modifiers _ lineNumber) -> concat [
             serialize modifiers,
             int16 (8 + index),
             [0x00, 0x05, 0x00, 0x01, 0x00, 0x06, 0x00, 0x00,
@@ -71,7 +72,7 @@ instance Serializable [JavaMethod] where
             [0x00, 0x00, 0x00, 0x01, 0xb1, 0x00, 0x00, 0x00,
              0x01, 0x00, 0x07, 0x00, 0x00, 0x00, 0x06, 0x00,
              0x01, 0x00, 0x00],
-            int16 ((index + 1) * 2)])
+            int16 lineNumber])
 
 instance Serializable JavaModifiers where
     serialize = int16 . modifiersAsBits

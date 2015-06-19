@@ -23,7 +23,8 @@ acceptanceTestCases = [
     TestCase "001: Empty Class" (acceptanceTestDir </> "001-empty-class")
             [testFile "Alpha.java"],
     TestCase "002: Empty Methods" (acceptanceTestDir </> "002-empty-methods")
-            [testFile "EmptyMethods.java"],
+            [testFile "EmptyMethods.java",
+             testFile "BadlyFormattedMethods.java"],
     TestCase "003: Class Modifiers" (acceptanceTestDir </> "003-class-modifiers")
             [testFile "PublicClass.java",
              testFile "DefaultAccessClass.java",
