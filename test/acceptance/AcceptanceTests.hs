@@ -31,7 +31,9 @@ acceptanceTestCases = [
              testFile "PublicAbstractClass.java",
              testFile "DefaultAccessAbstractClass.java",
              testFile "PublicFinalClass.java",
-             testFile "DefaultAccessFinalClass.java"]]
+             testFile "DefaultAccessFinalClass.java"],
+    TestCase "999: Comments" (acceptanceTestDir </> "999-comments")
+            [testFile "Comments.java"]]
 
 data TestCase =
         TestCase { testName :: T.Text, directory :: Shelly.FilePath, files :: [TestFile] }

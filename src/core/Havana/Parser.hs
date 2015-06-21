@@ -34,6 +34,7 @@ javaClass filePath = do
     className <- javaToken
     optionalWhitespace
     methods <- between (char '{') (char '}') javaMethods
+    optionalWhitespace
     return JavaClass { filePath = filePath,
                        className = className,
                        classModifiers = modifiers,
@@ -97,11 +98,28 @@ argumentList = string "(" >> optionalWhitespace >> string ")"
 javaToken :: Stream s m Char => ParsecT s u m JavaToken
 javaToken = (:) <$> letter <*> many alphaNum
 
-whitespace :: Stream s m Char => ParsecT s u m String
-whitespace = many1 space
+whitespace :: Stream s m Char => ParsecT s u m ()
+whitespace = skipMany1 (javaComment <|> skipMany1 space)
 
-optionalWhitespace :: Stream s m Char => ParsecT s u m String
-optionalWhitespace = many space
+optionalWhitespace :: Stream s m Char => ParsecT s u m ()
+optionalWhitespace = skipMany (javaComment <|> skipMany1 space)
+
+javaComment :: Stream s m Char => ParsecT s u m ()
+javaComment = do
+    try javaBlockComment <|> try javaLineComment
+    return ()
+
+javaBlockComment :: Stream s m Char => ParsecT s u m ()
+javaBlockComment = do
+    string "/*"
+    manyTill anyChar (try $ string "*/")
+    return ()
+
+javaLineComment :: Stream s m Char => ParsecT s u m ()
+javaLineComment = do
+    string "//"
+    manyTill (noneOf "\r\n") (try endOfLine)
+    return ()
 
 currentLineNumber :: Stream s m Char => ParsecT s u m LineNumber
 currentLineNumber = do
