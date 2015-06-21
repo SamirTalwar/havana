@@ -5,7 +5,7 @@ module Havana.Parser where
 import Havana.AST
 
 import Control.Applicative ((<*), (<*>))
-import Control.Monad (when)
+import Control.Monad (void, when)
 import Data.Functor ((<$>))
 import qualified Data.List as List
 import qualified Data.Maybe as Maybe
@@ -29,12 +29,9 @@ javaClass filePath = do
     optionalWhitespace
     lineNumber <- currentLineNumber
     modifiers <- javaClassModifiers
-    string "class"
-    whitespace
+    reservedWord "class"
     className <- javaToken
-    optionalWhitespace
-    methods <- between (char '{') (char '}') javaMethods
-    optionalWhitespace
+    methods <- between (symbol "{") (symbol "}") javaMethods
     return JavaClass { filePath = filePath,
                        className = className,
                        classModifiers = modifiers,
@@ -42,17 +39,12 @@ javaClass filePath = do
                        classLineNumber = lineNumber }
 
 javaMethods :: Stream s m Char => ParsecT s u m [JavaMethod]
-javaMethods = do
-    optionalWhitespace
-    many $ do
+javaMethods = many $ do
         modifiers <- javaMethodModifiers
         returnType <- javaType
-        whitespace
         methodName <- javaToken
-        optionalWhitespace
         argumentList
-        optionalWhitespace
-        between (char '{') (char '}') optionalWhitespace
+        between (symbol "{") (char '}') optionalWhitespace
         lineNumber <- currentLineNumber
         optionalWhitespace
         return JavaMethod {
@@ -74,7 +66,7 @@ javaMethodModifiers = javaModifiers $ javaStaticModifierString : javaVisibilityM
 
 javaModifiers :: Stream s m Char => [String] -> ParsecT s u m JavaModifiers
 javaModifiers validModifiers = do
-    modifiers <- many $ choice (map (try . string) validModifiers) <* whitespace
+    modifiers <- many $ choice (map (try . reservedWord) validModifiers)
     let visibilityModifier = case List.find (`elem` javaVisibilityModifierStrings) modifiers of
                                  Just "public" -> Public
                                  Just "protected" -> Protected
@@ -90,13 +82,27 @@ javaModifiers validModifiers = do
                            staticModifier = staticModifier }
 
 javaType :: Stream s m Char => ParsecT s u m JavaType
-javaType = string "void" >> return Void
+javaType = reservedWord "void" >> return Void
 
-argumentList :: Stream s m Char => ParsecT s u m String
-argumentList = string "(" >> optionalWhitespace >> string ")"
+argumentList :: Stream s m Char => ParsecT s u m ()
+argumentList = between (symbol "(") (symbol ")") (void $ string "")
 
 javaToken :: Stream s m Char => ParsecT s u m JavaToken
-javaToken = (:) <$> letter <*> many alphaNum
+javaToken = lexeme ((:) <$> letter <*> many alphaNum)
+
+reservedWord :: Stream s m Char => JavaToken -> ParsecT s u m JavaToken
+reservedWord expected = do
+    let parser = javaToken
+    actual <- parser
+    if actual == expected
+        then return actual
+        else unexpected actual
+
+symbol :: Stream s m Char => String -> ParsecT s u m String
+symbol value = lexeme $ string value
+
+lexeme :: Stream s m Char => ParsecT s u m a -> ParsecT s u m a
+lexeme parser = parser <* optionalWhitespace
 
 whitespace :: Stream s m Char => ParsecT s u m ()
 whitespace = skipMany1 (javaComment <|> skipMany1 space)
