@@ -10,6 +10,6 @@ compile :: FilePath -> IO ()
 compile inputPath = do
     result <- Parser.parse inputPath
     let ast = either (error . Parser.parseErrors) id result
-    Serializer.serializeToFile ast outputPath
+    (Serializer.serializeToFile $! ast) outputPath
         where
         outputPath = Path.replaceExtension inputPath "class"
