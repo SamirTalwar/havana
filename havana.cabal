@@ -18,7 +18,7 @@ cabal-version:       >=1.8
 library
   exposed-modules:     Havana, Havana.AST, Havana.Compiler, Havana.Parser, Havana.Serializer
   hs-source-dirs:      src/core
-  build-depends:       base ==4.8.*, bytestring, filepath, parsec
+  build-depends:       base ==4.8.*, bytestring, filepath, mtl, parsec
 
 executable havanac
   main-is:             Main.hs

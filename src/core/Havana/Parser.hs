@@ -43,7 +43,7 @@ javaMethods = many $ do
         modifiers <- javaMethodModifiers
         returnType <- javaType
         methodName <- javaToken
-        argumentList
+        parameters <- parameterList
         between (symbol "{") (char '}') optionalWhitespace
         lineNumber <- currentLineNumber
         optionalWhitespace
@@ -51,6 +51,7 @@ javaMethods = many $ do
             methodName = methodName,
             methodModifiers = modifiers,
             returnType = returnType,
+            methodParameters = parameters,
             methodLineNumber = lineNumber }
 
 
@@ -82,13 +83,22 @@ javaModifiers validModifiers = do
                            staticModifier = staticModifier }
 
 javaType :: Stream s m Char => ParsecT s u m JavaType
-javaType = reservedWord "void" >> return Void
-
-argumentList :: Stream s m Char => ParsecT s u m ()
-argumentList = between (symbol "(") (symbol ")") (void $ string "")
+javaType = javaToken >>= typeFromName
+    where
+    typeFromName "void" = return Void
+    typeFromName "int" = return Int
+    typeFromName other = unexpected other
 
 javaToken :: Stream s m Char => ParsecT s u m JavaToken
 javaToken = lexeme ((:) <$> letter <*> many alphaNum)
+
+parameterList :: Stream s m Char => ParsecT s u m [JavaParameter]
+parameterList = between (symbol "(") (symbol ")") (javaParameter `sepBy` symbol ",")
+    where
+    javaParameter = constructParameter <$> javaType <*> javaToken
+    constructParameter parameterType parameterName = JavaParameter {
+        parameterName = parameterName,
+        parameterType = parameterType }
 
 reservedWord :: Stream s m Char => JavaToken -> ParsecT s u m JavaToken
 reservedWord expected = do

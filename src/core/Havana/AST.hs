@@ -8,15 +8,22 @@ data AST = JavaClass {
          classLineNumber :: LineNumber }
         deriving (Show)
 
-data JavaType = Void
+data JavaType = Void | Int
 instance Show JavaType where
     show Void = "void"
+    show Int = "int"
 
 data JavaMethod = JavaMethod {
                 methodName :: JavaToken,
                 methodModifiers :: JavaModifiers,
+                methodParameters :: [JavaParameter],
                 returnType :: JavaType,
                 methodLineNumber :: LineNumber }
+        deriving (Show)
+
+data JavaParameter = JavaParameter {
+                   parameterName :: JavaToken,
+                   parameterType :: JavaType }
         deriving (Show)
 
 data JavaModifiers = JavaModifiers {

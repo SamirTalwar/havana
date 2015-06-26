@@ -4,78 +4,111 @@ module Havana.Serializer where
 
 import Havana.AST
 
+import Control.Monad.State.Lazy
 import Data.Bits
 import qualified Data.ByteString as ByteString
 import qualified Data.Char as Char
+import qualified Data.Maybe as Maybe
+import qualified Data.List as List
 import Data.Word (Word8)
 
+type ClassText = [String]
+data Context = Context ClassText
+
+modifyContext :: (ClassText -> ClassText) -> State Context ()
+modifyContext modifyClassText = modify (\(Context classText) -> Context (modifyClassText classText))
+
 serializeToFile :: AST -> FilePath -> IO ()
-serializeToFile ast outputPath = ByteString.writeFile outputPath (ByteString.pack $ serialize ast)
+serializeToFile ast outputPath =
+        ByteString.writeFile outputPath (ByteString.pack $ evalState (serialize ast) (Context []))
 
 class Serializable a where
-    serialize :: a -> [Word8]
+    serialize :: a -> State Context [Word8]
 
 instance Serializable AST where
-    serialize (JavaClass filePath className modifiers methods lineNumber) = concat [
-        [0xca, 0xfe, 0xba, 0xbe, 0x00, 0x00, 0x00, 0x34],
-        int16 (13 + count),
-        [0x0a, 0x00, 0x03],
-        int16 (10 + count),
-        [0x07],
-        int16 (11 + count),
-        [0x07],
-        int16 (12 + count),
+    serialize (JavaClass filePath className modifiers methods lineNumber) = do
+        modifyContext (++ [
+            "<init>",
+            methodTypeSignature (JavaMethod "<init>" (JavaModifiers Public NoHierarchy False) [] Void 0),
+            "Code",
+            "LineNumberTable"])
 
-        text "<init>", text "()V", text "Code",
+        theModifiers <- serialize (exceptHierarchy modifiers)
+        theMethods <- serialize methods
 
-        text "LineNumberTable", concatMap (text . methodName) methods,
+        modifyContext (++ ["SourceFile", filePath])
 
-        text "SourceFile", text filePath,
+        (Context allStrings) <- get
 
-        [0x0c, 0x00, 0x04, 0x00, 0x05],
+        return $ concat [
+            [0xca, 0xfe, 0xba, 0xbe, 0x00, 0x00, 0x00, 0x34],
+            int16 (13 + count),
+            [0x0a, 0x00, 0x03],
+            int16 (10 + count),
+            [0x07],
+            int16 (11 + count),
+            [0x07],
+            int16 (12 + count),
 
-        text className, text "java/lang/Object",
+            concatMap text allStrings,
 
-        int16 (bit 5 .|. modifiersAsBits modifiers),
+            [0x0c, 0x00, 0x04, 0x00, 0x05],
 
-        [0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00],
+            text className, text "java/lang/Object",
 
-        int16 (1 + count),
+            int16 (bit 5 .|. modifiersAsBits modifiers),
 
-        serialize (exceptHierarchy modifiers),
-        [0x00, 0x04, 0x00, 0x05, 0x00, 0x01, 0x00, 0x06,
-         0x00, 0x00, 0x00, 0x1d, 0x00, 0x01, 0x00, 0x01,
-         0x00, 0x00, 0x00, 0x05, 0x2a, 0xb7, 0x00, 0x01,
-         0xb1, 0x00, 0x00, 0x00, 0x01, 0x00, 0x07, 0x00,
-         0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x00],
+            [0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00],
 
-        int16 lineNumber,
+            int16 (1 + methodCount),
 
-        serialize methods,
+            theModifiers,
 
-        [0x00, 0x01],
-        int16 (8 + count),
-        [0x00, 0x00, 0x00, 0x02],
-        int16 (9 + count)]
+            [0x00, 0x04, 0x00, 0x05, 0x00, 0x01, 0x00, 0x06,
+             0x00, 0x00, 0x00, 0x1d, 0x00, 0x01, 0x00, 0x01,
+             0x00, 0x00, 0x00, 0x05, 0x2a, 0xb7, 0x00, 0x01,
+             0xb1, 0x00, 0x00, 0x00, 0x01, 0x00, 0x07, 0x00,
+             0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x00],
+
+            int16 lineNumber,
+
+            theMethods,
+
+            [0x00, 0x01],
+            int16 (8 + count),
+            [0x00, 0x00, 0x00, 0x02],
+            int16 (9 + count)]
 
         where
-        count = length methods
+        methodCount = length methods
+        count = methodCount + sum (map (length . methodParameters) methods)
 
 instance Serializable [JavaMethod] where
-    serialize methods = zip [0..] methods >>=
-        (\(index, JavaMethod _ modifiers _ lineNumber) -> concat [
-            serialize modifiers,
+    serialize methods = concat <$> mapM serialize (zip [0..] methods :: [(Int, JavaMethod)])
+
+instance Serializable (Int, JavaMethod) where
+    serialize (index, method@(JavaMethod name modifiers parameters _ lineNumber)) = do
+        modifyContext (++ case length parameters of
+                0 -> [name]
+                n -> [name, methodTypeSignature method])
+
+        (Context allStrings) <- get
+
+        theModifiers <- serialize modifiers
+        return $ concat [
+            theModifiers,
             int16 (8 + index),
-            [0x00, 0x05, 0x00, 0x01, 0x00, 0x06, 0x00, 0x00,
-             0x00, 0x19, 0x00, 0x00],
-            int16 (if staticModifier modifiers then 0 else 1),
+            int16 (4 + Maybe.fromJust (List.elemIndex (methodTypeSignature method) allStrings)),
+            [0x00, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x19,
+             0x00, 0x00],
+            int16 (length parameters + if staticModifier modifiers then 0 else 1),
             [0x00, 0x00, 0x00, 0x01, 0xb1, 0x00, 0x00, 0x00,
              0x01, 0x00, 0x07, 0x00, 0x00, 0x00, 0x06, 0x00,
              0x01, 0x00, 0x00],
-            int16 lineNumber])
+            int16 lineNumber]
 
 instance Serializable JavaModifiers where
-    serialize = int16 . modifiersAsBits
+    serialize = return . int16 . modifiersAsBits
 
 modifiersAsBits (JavaModifiers visibilityModifier hierarchyModifier staticModifier) =
     zeroBits
@@ -89,6 +122,10 @@ modifiersAsBits (JavaModifiers visibilityModifier hierarchyModifier staticModifi
                  Abstract -> bit 10
                  Final -> bit 4)
         .|. (if staticModifier then bit 3 else zeroBits)
+
+methodTypeSignature :: JavaMethod -> String
+methodTypeSignature (JavaMethod methodName _ methodParameters _ _) =
+    "(" ++ replicate (length methodParameters) 'I' ++ ")V"
 
 text :: String -> [Word8]
 text string = map fromIntegral $ [0x01, 0x00, length string] ++ map Char.ord string
