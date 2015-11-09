@@ -6,9 +6,10 @@ data AST = JavaClass {
          classModifiers :: JavaModifiers,
          methods :: [JavaMethod],
          classLineNumber :: LineNumber }
-        deriving (Show)
+        deriving (Eq, Show)
 
 data JavaType = Void | Int
+        deriving (Eq)
 instance Show JavaType where
     show Void = "void"
     show Int = "int"
@@ -19,20 +20,21 @@ data JavaMethod = JavaMethod {
                 methodParameters :: [JavaParameter],
                 returnType :: JavaType,
                 methodLineNumber :: LineNumber }
-        deriving (Show)
+        deriving (Eq, Show)
 
 data JavaParameter = JavaParameter {
                    parameterName :: JavaToken,
                    parameterType :: JavaType }
-        deriving (Show)
+        deriving (Eq, Show)
 
 data JavaModifiers = JavaModifiers {
                    visibilityModifier :: JavaVisibilityModifier,
                    hierarchyModifier :: JavaHierarchyModifier,
                    staticModifier :: JavaStaticModifier }
-        deriving (Show)
+        deriving (Eq, Show)
 
 data JavaVisibilityModifier = Public | Protected | Private | DefaultAccess
+        deriving (Eq)
 instance Show JavaVisibilityModifier where
     show Public = "public"
     show Protected = "protected"
@@ -40,6 +42,7 @@ instance Show JavaVisibilityModifier where
     show DefaultAccess = ""
 
 data JavaHierarchyModifier = NoHierarchy | Abstract | Final
+        deriving (Eq)
 instance Show JavaHierarchyModifier where
     show NoHierarchy = ""
     show Abstract = "abstract"

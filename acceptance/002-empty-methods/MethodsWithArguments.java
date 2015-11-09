@@ -3,7 +3,7 @@ class MethodsWithArguments {
 
     void oneArgumentMethod(int argument) { }
 
-    // void twoArgumentMethod(int argumentA, int argumentB) { }
+    void twoArgumentMethod(int argumentA, int argumentB) { }
 
     // void threeArgumentMethod(int argumentA, int argumentB, int argumentC) { }
 

@@ -12,11 +12,12 @@ import qualified Data.Maybe as Maybe
 import qualified Data.List as List
 import Data.Word (Word8)
 
+type MethodSignature = undefined
 type ClassText = [String]
 data Context = Context ClassText
 
-modifyContext :: (ClassText -> ClassText) -> State Context ()
-modifyContext modifyClassText = modify (\(Context classText) -> Context (modifyClassText classText))
+modifyClassText :: (ClassText -> ClassText) -> State Context ()
+modifyClassText m = modify (\(Context classText) -> Context (m classText))
 
 serializeToFile :: AST -> FilePath -> IO ()
 serializeToFile ast outputPath =
@@ -27,7 +28,7 @@ class Serializable a where
 
 instance Serializable AST where
     serialize (JavaClass filePath className modifiers methods lineNumber) = do
-        modifyContext (++ [
+        modifyClassText (++ [
             "<init>",
             methodTypeSignature (JavaMethod "<init>" (JavaModifiers Public NoHierarchy False) [] Void 0),
             "Code",
@@ -36,7 +37,7 @@ instance Serializable AST where
         theModifiers <- serialize (exceptHierarchy modifiers)
         theMethods <- serialize methods
 
-        modifyContext (++ ["SourceFile", filePath])
+        modifyClassText (++ ["SourceFile", filePath])
 
         (Context allStrings) <- get
 
@@ -81,14 +82,14 @@ instance Serializable AST where
 
         where
         methodCount = length methods
-        count = methodCount + sum (map (length . methodParameters) methods)
+        count = methodCount + sum (map (length . List.nub . methodParameters) methods)
 
 instance Serializable [JavaMethod] where
     serialize methods = concat <$> mapM serialize (zip [0..] methods :: [(Int, JavaMethod)])
 
 instance Serializable (Int, JavaMethod) where
     serialize (index, method@(JavaMethod name modifiers parameters _ lineNumber)) = do
-        modifyContext (++ case length parameters of
+        modifyClassText (++ case length parameters of
                 0 -> [name]
                 n -> [name, methodTypeSignature method])
 
