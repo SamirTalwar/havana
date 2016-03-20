@@ -7,12 +7,9 @@ import Control.Monad
 import qualified Data.ByteString as BS
 import Data.Monoid (Monoid, mappend, mconcat, mempty)
 import qualified Data.List as L
-import qualified Data.String as S
 import qualified Data.Text as T
 import qualified Data.Word as W
-import qualified Numeric as N
-import qualified System.Directory as Dir
-import qualified System.FilePath as Path
+import qualified Filesystem.Path.CurrentOS as FilePath
 import Text.Printf (printf)
 
 import qualified Havana.Compiler
@@ -56,17 +53,24 @@ instance Monoid TestResult where
 
 testFile inputFile = TestFile inputFile outputFile
     where
-    outputFile = S.fromString $ Path.replaceExtension (fromPath inputFile) "class"
+    outputFile = FilePath.replaceExtension inputFile "class"
 
 disabled (TestCase testName _ _) = DisabledTestCase testName
 
 acceptanceTestDir = fromText "acceptance"
 tmpDir = fromText "tmp"
-havanacRelativePath = fromText "dist/build/havanac/havanac"
+havanacPath = do
+    foundPerDirectory <- forM potentialDirectories $ \directory -> do
+      exists <- test_d directory
+      if exists then findWhen isHavanac directory else return []
+    absPath (head (concat foundPerDirectory))
+    where
+        potentialDirectories = ["dist", ".stack-work"]
+        isHavanac path = (&&) <$> return (FilePath.filename path == "havanac") <*> test_f path
 
 main = shelly $ do
     checkJavaVersion "1.8"
-    havanac <- absPath havanacRelativePath
+    havanac <- havanacPath
     tmpPath <- absPath tmpDir
     rm_rf tmpPath
     mkdir_p tmpPath

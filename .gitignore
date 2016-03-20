@@ -1,7 +1,5 @@
 # Build
-.cabal-sandbox
-cabal.sandbox.config
-dist
+.stack-work
 
 # Acceptance Tests
 .shelly
