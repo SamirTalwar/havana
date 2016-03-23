@@ -10,6 +10,7 @@ import qualified Data.List as L
 import qualified Data.Text as T
 import qualified Data.Word as W
 import qualified Filesystem.Path.CurrentOS as FilePath
+import qualified System.Info
 import Text.Printf (printf)
 
 import qualified Havana.Compiler
@@ -61,11 +62,15 @@ acceptanceTestDir = fromText "acceptance"
 tmpDir = fromText "tmp"
 havanacPath = do
     foundPerDirectory <- forM potentialDirectories $ \directory -> do
-      exists <- test_d directory
-      if exists then findWhen isHavanac directory else return []
+        exists <- test_d directory
+        if exists then findWhen isHavanac directory else return []
     absPath (head (concat foundPerDirectory))
     where
-        potentialDirectories = ["dist", ".stack-work"]
+        stackOs = case System.Info.os of
+                      "darwin" -> "osx"
+                      os -> os
+        stackDistDirectory = FilePath.decodeString (".stack-work/dist/" ++ System.Info.arch ++ "-" ++ stackOs)
+        potentialDirectories = ["dist", stackDistDirectory]
         isHavanac path = (&&) <$> return (FilePath.filename path == "havanac") <*> test_f path
 
 main = shelly $ do
